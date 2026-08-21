@@ -26,7 +26,7 @@ router.post("/cadastrar", cadastrar);
 // POST /api/usuarios/login
 router.post("/login", login);
 
-// Listar todos os usuarios ativos
+// Listar todos os usuários ativos
 // GET /api/usuarios
 router.get("/", autenticar, listar);
 

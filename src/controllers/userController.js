@@ -1,128 +1,4 @@
-const jwt = require("jsonwebtoken");
-const crypto = require("crypto");
-const Usuario = require("../models/User");
-const { enviarEmailRedefinicao } = require("../utils/email");
-
-// ─────────────────────────────────────────────
-// Função auxiliar: gera um token JWT para o usuário
-// ─────────────────────────────────────────────
-const gerarToken = (id) => {
-  return jwt.sign(
-    { id }, // payload: dados que ficam "dentro" do token
-    process.env.JWT_SECRET, // chave secreta para assinar
-    { expiresIn: process.env.JWT_EXPIRES_IN } // tempo de validade
-  );
-};
-
-// ─────────────────────────────────────────────
-// POST /api/usuarios/cadastrar
-// Cria um novo usuário no banco de dados
-// ─────────────────────────────────────────────
-const cadastrar = async (req, res) => {
-  try {
-    const { nome, email, senha } = req.body;
-
-    // Validação básica dos campos obrigatórios
-    if (!nome || !email || !senha) {
-      return res.status(400).json({
-        sucesso: false,
-        mensagem: "Nome, e-mail e senha são obrigatórios.",
-      });
-    }
-
-    // Verifica se já existe um usuário com este e-mail
-    const emailJaCadastrado = await Usuario.findOne({ email });
-    if (emailJaCadastrado) {
-      return res.status(400).json({
-        sucesso: false,
-        mensagem: "Este e-mail já está cadastrado.",
-      });
-    }
-
-    // Cria o usuário (a senha é hasheada automaticamente pelo middleware do Model)
-    const usuario = await Usuario.create({ nome, email, senha });
-
-    // Gera o token JWT para o usuário já ficar logado após o cadastro
-    const token = gerarToken(usuario._id);
-
-    return res.status(201).json({
-      sucesso: true,
-      mensagem: "Usuário cadastrado com sucesso!",
-      token,
-      usuario: {
-        id: usuario._id,
-        nome: usuario.nome,
-        email: usuario.email,
-      },
-    });
-  } catch (erro) {
-    return res.status(500).json({
-      sucesso: false,
-      mensagem: "Erro interno no servidor.",
-      erro: erro.message,
-    });
-  }
-};
-
-// ─────────────────────────────────────────────
-// POST /api/usuarios/login
-// Autentica o usuário e retorna um token JWT
-// ─────────────────────────────────────────────
-const login = async (req, res) => {
-  try {
-    const { email, senha } = req.body;
-
-    if (!email || !senha) {
-      return res.status(400).json({
-        sucesso: false,
-        mensagem: "E-mail e senha são obrigatórios.",
-      });
-    }
-
-    // Busca o usuário pelo e-mail E inclui o campo senha (que é select: false no Model)
-    const usuario = await Usuario.findOne({ email, ativo: true }).select(
-      "+senha"
-    );
-
-    // Verifica se o usuário existe E se a senha está correta
-    // (verificamos os dois juntos por segurança, para não revelar qual está errado)
-    if (!usuario || !(await usuario.senhaCorreta(senha))) {
-      return res.status(401).json({
-        sucesso: false,
-        mensagem: "E-mail ou senha inválidos.",
-      });
-    }
-
-    const token = gerarToken(usuario._id);
-
-    return res.status(200).json({
-      sucesso: true,
-      mensagem: "Login realizado com sucesso!",
-      token,
-      usuario: {
-        id: usuario._id,
-        nome: usuario.nome,
-        email: usuario.email,
-      },
-    });
-  } catch (erro) {
-    return res.status(500).json({
-      sucesso: false,
-      mensagem: "Erro interno no servidor.",
-      erro: erro.message,
-    });
-  }
-};
-
-// ─────────────────────────────────────────────
-// GET /api/usuarios/perfil
-// Retorna os dados do usuário logado (rota protegida)
-// ─────────────────────────────────────────────
-const perfil = async (req, res) => {
-  // req.usuario é preenchido pelo middleware de autenticação
-  const usuario = req.usuario;
-
-  return res.status(200).json({
+return res.status(200).json({
     sucesso: true,
     usuario: {
       id: usuario._id,
@@ -131,34 +7,34 @@ const perfil = async (req, res) => {
       criadoEm: usuario.createdAt,
     },
   });
-};
+;
 
 // ─────────────────────────────────────────────
 // GET /api/usuarios
-// Lista todos os usuarios ativos (rota protegida)
+// Lista todos os usuários ativos (rota protegida)
 // ─────────────────────────────────────────────
 const listar = async (req, res) => {
   try{
-    const usuarios = await Usuarios.find({ ativo: true }).sort({ createAt: -1});
+    const usuarios = await Usuario.find({ ativo: true }).sort({ createdAt: -1 });
 
     return res.status(200).json({
       sucesso: true,
       total: usuarios.length,
       usuarios: usuarios.map((u) => ({
         id: u._id,
-        nome: u.nome,
+        nome:u.nome,
         email: u.email,
         criadoEm: u.createdAt,
       })),
-     })
-    } catch (erro) {
-      return res.status(500).json({
-        sucesso: false,
-        mensagem: "Erro interno no servidor.",
-        erro: erro.message,
-      });
-    }
-  };
+    })
+  } catch (erro) {
+    return res.status(500).json({
+      sucesso: false,
+      mensagem: "Erro interno no servidor.",
+      erro: erro.message,
+    });
+  }
+};
 
 
 // ─────────────────────────────────────────────
